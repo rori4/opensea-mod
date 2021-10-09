@@ -891,17 +891,20 @@ export class OpenSeaPort {
         recipientAddress?: string;
         referrerAddress?: string; }
     ): Promise<any> {
-    const matchingOrder = this._makeMatchingOrder({
+      console.log('matching order')
+      const matchingOrder = this._makeMatchingOrder({
       order,
       accountAddress,
       recipientAddress: recipientAddress || accountAddress
     })
+      console.log('assign orders to side')
+      const { buy, sell } = assignOrdersToSides(order, matchingOrder)
 
-    const { buy, sell } = assignOrdersToSides(order, matchingOrder)
-
-    const metadata = this._getMetadata(order, referrerAddress)
-    const txData = await this._atomicMatchTxData({ buy, sell, accountAddress, metadata })
-    return txData
+      console.log('metadata')
+      const metadata = this._getMetadata(order, referrerAddress)
+      console.log('atomic match tx')
+      const txData = await this._atomicMatchTxData({ buy, sell, accountAddress, metadata })
+      return txData
   }
 
   /**
