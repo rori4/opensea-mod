@@ -894,18 +894,19 @@ export class OpenSeaPort {
         skipValidation?: boolean
       }
     ): Promise<any> {
-      console.log('matching order')
+      this.logger('matching order')
       const matchingOrder = this._makeMatchingOrder({
       order,
       accountAddress,
       recipientAddress: recipientAddress || accountAddress
     })
-      console.log('assign orders to side')
+      this.logger('assign orders to side')
       const { buy, sell } = assignOrdersToSides(order, matchingOrder)
-
-      console.log('metadata')
+      this.logger(JSON.stringify(buy))
+      this.logger(JSON.stringify(sell))
+      this.logger('metadata')
       const metadata = this._getMetadata(order, referrerAddress)
-      console.log('atomic match tx')
+      this.logger('atomic match tx')
       const txData = await this._atomicMatchTxData({ buy, sell, accountAddress, metadata }, skipValidation)
       return txData
   }
@@ -2377,6 +2378,7 @@ export class OpenSeaPort {
 
     try {
       if (shouldValidateBuy) {
+        this.logger('_validateOrder - buy')
         const buyValid = await this._validateOrder(buy)
         this.logger(`Buy order is valid: ${buyValid}`)
 
@@ -2386,6 +2388,7 @@ export class OpenSeaPort {
       }
 
       if (shouldValidateSell) {
+        this.logger('_validateOrder - sell')
         const sellValid = await this._validateOrder(sell)
         this.logger(`Sell order is valid: ${sellValid}`)
 
@@ -2394,6 +2397,7 @@ export class OpenSeaPort {
         }
       }
 
+      this.logger('can match')
       const canMatch = await requireOrdersCanMatch(this._getClientsForRead(retries).wyvernProtocol, { buy, sell, accountAddress })
       this.logger(`Orders matching: ${canMatch}`)
 
@@ -3001,32 +3005,32 @@ export class OpenSeaPort {
   let shouldValidateSell = true
 
   if (sell.maker.toLowerCase() == accountAddress.toLowerCase()) {
-  console.log('_sellOrderValidationAndApprovals')
+  this.logger('_sellOrderValidationAndApprovals')
     // USER IS THE SELLER, only validate the buy order
   await this._sellOrderValidationAndApprovals({ order: sell, accountAddress })
   shouldValidateSell = false
 
   } else if (buy.maker.toLowerCase() == accountAddress.toLowerCase()) {
-  console.log('_buyOrderValidationAndApprovals')
+  this.logger('_buyOrderValidationAndApprovals')
     // USER IS THE BUYER, only validate the sell order
   await this._buyOrderValidationAndApprovals({ order: buy, counterOrder: sell, accountAddress })
   shouldValidateBuy = false
 
     // If using ETH to pay, set the value of the transaction to the current price
   if (buy.paymentToken == NULL_ADDRESS) {
-     console.log('_getRequiredAmountForTakingSellOrder')
+     this.logger('_getRequiredAmountForTakingSellOrder')
      value = await this._getRequiredAmountForTakingSellOrder(sell)
     }
   } else {
     // User is neither - matching service
   }
 
-  console.log('_validateMatch')
+  this.logger('_validateMatch')
   if (!skipValidate) {
     await this._validateMatch({ buy, sell, accountAddress, shouldValidateBuy, shouldValidateSell })
   }
 
-  console.log('_dispatch event match orders')
+  this.logger('_dispatch event match orders')
   this._dispatch(EventType.MatchOrders, { buy, sell, accountAddress, matchMetadata: metadata })
 
   const txnData: any = { from: accountAddress, value: value?.toString(), to: buy.exchange }
@@ -3058,7 +3062,7 @@ export class OpenSeaPort {
     // Estimate gas first
     try {
       // Typescript splat doesn't typecheck
-    console.log('gasEstimate')
+    this.logger('gasEstimate')
     const gasEstimate = await this._wyvernProtocolReadOnly.wyvernExchange.atomicMatch_.estimateGasAsync(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], txnData)
 
     txnData.gas = this._correctGasAmount(gasEstimate)
@@ -3071,7 +3075,7 @@ export class OpenSeaPort {
 
   // Then do the transaction
   try {
-    console.log('FulfillOrder')
+    this.logger('FulfillOrder')
     this.logger(`Fulfilling order with gas set to ${txnData.gas}`)
     txnData.data = this._wyvernProtocol.wyvernExchange.atomicMatch_.getABIEncodedTransactionData(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10])
   } catch (error) {
