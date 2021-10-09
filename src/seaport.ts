@@ -2997,25 +2997,30 @@ export class OpenSeaPort {
   let shouldValidateSell = true
 
   if (sell.maker.toLowerCase() == accountAddress.toLowerCase()) {
+  console.log('_sellOrderValidationAndApprovals')
     // USER IS THE SELLER, only validate the buy order
     await this._sellOrderValidationAndApprovals({ order: sell, accountAddress })
     shouldValidateSell = false
 
   } else if (buy.maker.toLowerCase() == accountAddress.toLowerCase()) {
+  console.log('_buyOrderValidationAndApprovals')
     // USER IS THE BUYER, only validate the sell order
     await this._buyOrderValidationAndApprovals({ order: buy, counterOrder: sell, accountAddress })
     shouldValidateBuy = false
 
     // If using ETH to pay, set the value of the transaction to the current price
     if (buy.paymentToken == NULL_ADDRESS) {
+     console.log('_getRequiredAmountForTakingSellOrder')
       value = await this._getRequiredAmountForTakingSellOrder(sell)
     }
   } else {
     // User is neither - matching service
   }
 
+  console.log('_validateMatch')
   await this._validateMatch({ buy, sell, accountAddress, shouldValidateBuy, shouldValidateSell })
 
+  console.log('_dispatch event match orders')
   this._dispatch(EventType.MatchOrders, { buy, sell, accountAddress, matchMetadata: metadata })
 
   const txnData: any = { from: accountAddress, value }
@@ -3046,6 +3051,7 @@ export class OpenSeaPort {
   // Estimate gas first
   try {
     // Typescript splat doesn't typecheck
+  console.log('gasEstimate')
     const gasEstimate = await this._wyvernProtocolReadOnly.wyvernExchange.atomicMatch_.estimateGasAsync(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], txnData)
 
     txnData.gas = this._correctGasAmount(gasEstimate)
@@ -3057,6 +3063,7 @@ export class OpenSeaPort {
 
   // Then do the transaction
   try {
+    console.log('FulfillOrder')
     this.logger(`Fulfilling order with gas set to ${txnData.gas}`)
     txnData.data = this._wyvernProtocol.wyvernExchange.atomicMatch_.getABIEncodedTransactionData(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10])
   } catch (error) {
