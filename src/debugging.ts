@@ -50,7 +50,7 @@ export async function requireOrdersCanMatch(
     )
 
     if (result) {
-        return
+        return result
     }
 
     if (!(+buy.side == +SaleKindInterface.Side.Buy && +sell.side == +SaleKindInterface.Side.Sell)) {
@@ -109,7 +109,7 @@ export async function requireOrderCalldataCanMatch(
 ) {
     const result = await client.wyvernExchange.orderCalldataCanMatch.callAsync(buy.calldata, buy.replacementPattern, sell.calldata, sell.replacementPattern)
     if (result) {
-        return
+        return result
     }
     throw new Error('Unable to match offer data with auction data.')
 }

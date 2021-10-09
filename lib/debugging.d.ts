@@ -10,7 +10,7 @@ export declare function requireOrdersCanMatch(client: WyvernProtocol, { buy, sel
     buy: Order;
     sell: Order;
     accountAddress: string;
-}): Promise<void>;
+}): Promise<true>;
 /**
  * Debug the `orderCalldataCanMatch` part of Wyvern
  * @param buy Buy order for debugging
@@ -19,4 +19,4 @@ export declare function requireOrdersCanMatch(client: WyvernProtocol, { buy, sel
 export declare function requireOrderCalldataCanMatch(client: WyvernProtocol, { buy, sell }: {
     buy: Order;
     sell: Order;
-}): Promise<void>;
+}): Promise<true>;
