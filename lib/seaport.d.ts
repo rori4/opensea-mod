@@ -325,11 +325,12 @@ export declare class OpenSeaPort {
      * @param referrerAddress The optional address that referred the order
      * @returns unsigned transaction
      */
-    fulfillOrderTxData({ order, accountAddress, recipientAddress, referrerAddress }: {
+    fulfillOrderTxData({ order, accountAddress, recipientAddress, referrerAddress, skipValidation }: {
         order: Order;
         accountAddress: string;
         recipientAddress?: string;
         referrerAddress?: string;
+        skipValidation?: boolean;
     }): Promise<any>;
     /**
      * Cancel an order on-chain, preventing it from ever being fulfilled.

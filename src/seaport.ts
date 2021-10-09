@@ -885,11 +885,13 @@ export class OpenSeaPort {
    * @returns unsigned transaction
    */
   public async fulfillOrderTxData(
-      { order, accountAddress, recipientAddress, referrerAddress }:
+      { order, accountAddress, recipientAddress, referrerAddress, skipValidation }:
       { order: Order;
         accountAddress: string;
         recipientAddress?: string;
-        referrerAddress?: string; }
+        referrerAddress?: string;
+        skipValidation?: boolean
+      }
     ): Promise<any> {
       console.log('matching order')
       const matchingOrder = this._makeMatchingOrder({
@@ -903,7 +905,7 @@ export class OpenSeaPort {
       console.log('metadata')
       const metadata = this._getMetadata(order, referrerAddress)
       console.log('atomic match tx')
-      const txData = await this._atomicMatchTxData({ buy, sell, accountAddress, metadata })
+      const txData = await this._atomicMatchTxData({ buy, sell, accountAddress, metadata }, skipValidation)
       return txData
   }
 
@@ -2990,7 +2992,8 @@ export class OpenSeaPort {
 
   private async _atomicMatchTxData(
     { buy, sell, accountAddress, metadata = NULL_BLOCK_HASH }:
-    { buy: Order; sell: Order; accountAddress: string; metadata?: string }
+    { buy: Order; sell: Order; accountAddress: string; metadata?: string },
+    skipValidate: boolean = false
   ) {
   let value
   let shouldValidateBuy = true
@@ -2999,26 +3002,28 @@ export class OpenSeaPort {
   if (sell.maker.toLowerCase() == accountAddress.toLowerCase()) {
   console.log('_sellOrderValidationAndApprovals')
     // USER IS THE SELLER, only validate the buy order
-    await this._sellOrderValidationAndApprovals({ order: sell, accountAddress })
-    shouldValidateSell = false
+  await this._sellOrderValidationAndApprovals({ order: sell, accountAddress })
+  shouldValidateSell = false
 
   } else if (buy.maker.toLowerCase() == accountAddress.toLowerCase()) {
   console.log('_buyOrderValidationAndApprovals')
     // USER IS THE BUYER, only validate the sell order
-    await this._buyOrderValidationAndApprovals({ order: buy, counterOrder: sell, accountAddress })
-    shouldValidateBuy = false
+  await this._buyOrderValidationAndApprovals({ order: buy, counterOrder: sell, accountAddress })
+  shouldValidateBuy = false
 
     // If using ETH to pay, set the value of the transaction to the current price
-    if (buy.paymentToken == NULL_ADDRESS) {
+  if (buy.paymentToken == NULL_ADDRESS) {
      console.log('_getRequiredAmountForTakingSellOrder')
-      value = await this._getRequiredAmountForTakingSellOrder(sell)
+     value = await this._getRequiredAmountForTakingSellOrder(sell)
     }
   } else {
     // User is neither - matching service
   }
 
   console.log('_validateMatch')
-  await this._validateMatch({ buy, sell, accountAddress, shouldValidateBuy, shouldValidateSell })
+  if(!skipValidate) {
+    await this._validateMatch({ buy, sell, accountAddress, shouldValidateBuy, shouldValidateSell })
+  }
 
   console.log('_dispatch event match orders')
   this._dispatch(EventType.MatchOrders, { buy, sell, accountAddress, matchMetadata: metadata })
@@ -3048,18 +3053,21 @@ export class OpenSeaPort {
     ]
   ]
 
-  // Estimate gas first
-  try {
-    // Typescript splat doesn't typecheck
-  console.log('gasEstimate')
+  if(!skipValidate) {
+    // Estimate gas first
+    try {
+      // Typescript splat doesn't typecheck
+    console.log('gasEstimate')
     const gasEstimate = await this._wyvernProtocolReadOnly.wyvernExchange.atomicMatch_.estimateGasAsync(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], txnData)
 
     txnData.gas = this._correctGasAmount(gasEstimate)
 
-  } catch (error) {
-    console.error(`Failed atomic match with args: `, args, error)
-    throw new Error(`Oops, the Ethereum network rejected this transaction :( The OpenSea devs have been alerted, but this problem is typically due an item being locked or untransferrable. The exact error was "${error.message.substr(0, MAX_ERROR_LENGTH)}..."`)
+    } catch (error) {
+      console.error(`Failed atomic match with args: `, args, error)
+      throw new Error(`Oops, the Ethereum network rejected this transaction :( The OpenSea devs have been alerted, but this problem is typically due an item being locked or untransferrable. The exact error was "${error.message.substr(0, MAX_ERROR_LENGTH)}..."`)
+    }
   }
+
 
   // Then do the transaction
   try {
