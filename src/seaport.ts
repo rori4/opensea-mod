@@ -876,6 +876,35 @@ export class OpenSeaPort {
   }
 
   /**
+   * Fullfill or "take" an order for an asset, either a buy or sell order
+   * @param param0 __namedParamaters Object
+   * @param order The order to fulfill, a.k.a. "take"
+   * @param accountAddress The taker's wallet address
+   * @param recipientAddress The optional address to receive the order's item(s) or curriencies. If not specified, defaults to accountAddress.
+   * @param referrerAddress The optional address that referred the order
+   * @returns unsigned transaction
+   */
+  public async fulfillOrderTxData(
+      { order, accountAddress, recipientAddress, referrerAddress }:
+      { order: Order;
+        accountAddress: string;
+        recipientAddress?: string;
+        referrerAddress?: string; }
+    ): Promise<any> {
+    const matchingOrder = this._makeMatchingOrder({
+      order,
+      accountAddress,
+      recipientAddress: recipientAddress || accountAddress
+    })
+
+    const { buy, sell } = assignOrdersToSides(order, matchingOrder)
+
+    const metadata = this._getMetadata(order, referrerAddress)
+    const txData = await this._atomicMatchTxData({ buy, sell, accountAddress, metadata })
+    return txData
+  }
+
+  /**
    * Cancel an order on-chain, preventing it from ever being fulfilled.
    * @param param0 __namedParameters Object
    * @param order The order to cancel
@@ -2955,6 +2984,83 @@ export class OpenSeaPort {
     }
     return txHash
   }
+
+  private async _atomicMatchTxData(
+    { buy, sell, accountAddress, metadata = NULL_BLOCK_HASH }:
+    { buy: Order; sell: Order; accountAddress: string; metadata?: string }
+  ) {
+  let value
+  let shouldValidateBuy = true
+  let shouldValidateSell = true
+
+  if (sell.maker.toLowerCase() == accountAddress.toLowerCase()) {
+    // USER IS THE SELLER, only validate the buy order
+    await this._sellOrderValidationAndApprovals({ order: sell, accountAddress })
+    shouldValidateSell = false
+
+  } else if (buy.maker.toLowerCase() == accountAddress.toLowerCase()) {
+    // USER IS THE BUYER, only validate the sell order
+    await this._buyOrderValidationAndApprovals({ order: buy, counterOrder: sell, accountAddress })
+    shouldValidateBuy = false
+
+    // If using ETH to pay, set the value of the transaction to the current price
+    if (buy.paymentToken == NULL_ADDRESS) {
+      value = await this._getRequiredAmountForTakingSellOrder(sell)
+    }
+  } else {
+    // User is neither - matching service
+  }
+
+  await this._validateMatch({ buy, sell, accountAddress, shouldValidateBuy, shouldValidateSell })
+
+  this._dispatch(EventType.MatchOrders, { buy, sell, accountAddress, matchMetadata: metadata })
+
+  const txnData: any = { from: accountAddress, value, to: buy.exchange }
+  const args: WyvernAtomicMatchParameters = [
+    [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target,
+    buy.staticTarget, buy.paymentToken, sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
+    [buy.makerRelayerFee, buy.takerRelayerFee, buy.makerProtocolFee, buy.takerProtocolFee, buy.basePrice, buy.extra, buy.listingTime, buy.expirationTime, buy.salt, sell.makerRelayerFee, sell.takerRelayerFee, sell.makerProtocolFee, sell.takerProtocolFee, sell.basePrice, sell.extra, sell.listingTime, sell.expirationTime, sell.salt],
+    [buy.feeMethod, buy.side, buy.saleKind, buy.howToCall, sell.feeMethod, sell.side, sell.saleKind, sell.howToCall],
+    buy.calldata,
+    sell.calldata,
+    buy.replacementPattern,
+    sell.replacementPattern,
+    buy.staticExtradata,
+    sell.staticExtradata,
+    [
+      buy.v || 0,
+      sell.v || 0
+    ],
+    [
+      buy.r || NULL_BLOCK_HASH,
+      buy.s || NULL_BLOCK_HASH,
+      sell.r || NULL_BLOCK_HASH,
+      sell.s || NULL_BLOCK_HASH,
+      metadata
+    ]
+  ]
+
+  // Estimate gas first
+  try {
+    // Typescript splat doesn't typecheck
+    const gasEstimate = await this._wyvernProtocolReadOnly.wyvernExchange.atomicMatch_.estimateGasAsync(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], txnData)
+
+    txnData.gas = this._correctGasAmount(gasEstimate)
+
+  } catch (error) {
+    console.error(`Failed atomic match with args: `, args, error)
+    throw new Error(`Oops, the Ethereum network rejected this transaction :( The OpenSea devs have been alerted, but this problem is typically due an item being locked or untransferrable. The exact error was "${error.message.substr(0, MAX_ERROR_LENGTH)}..."`)
+  }
+
+  // Then do the transaction
+  try {
+    this.logger(`Fulfilling order with gas set to ${txnData.gas}`)
+    txnData.data = this._wyvernProtocol.wyvernExchange.atomicMatch_.getABIEncodedTransactionData(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10])
+  } catch (error) {
+    console.error(error)
+  }
+  return txnData
+}
 
   private async _getRequiredAmountForTakingSellOrder(sell: Order) {
     const currentPrice = await this.getCurrentPrice(sell)

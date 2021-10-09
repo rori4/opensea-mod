@@ -317,6 +317,21 @@ export declare class OpenSeaPort {
         referrerAddress?: string;
     }): Promise<string>;
     /**
+     * Fullfill or "take" an order for an asset, either a buy or sell order
+     * @param param0 __namedParamaters Object
+     * @param order The order to fulfill, a.k.a. "take"
+     * @param accountAddress The taker's wallet address
+     * @param recipientAddress The optional address to receive the order's item(s) or curriencies. If not specified, defaults to accountAddress.
+     * @param referrerAddress The optional address that referred the order
+     * @returns unsigned transaction
+     */
+    fulfillOrderTxData({ order, accountAddress, recipientAddress, referrerAddress }: {
+        order: Order;
+        accountAddress: string;
+        recipientAddress?: string;
+        referrerAddress?: string;
+    }): Promise<any>;
+    /**
      * Cancel an order on-chain, preventing it from ever being fulfilled.
      * @param param0 __namedParameters Object
      * @param order The order to cancel
@@ -767,6 +782,7 @@ export declare class OpenSeaPort {
     private _getPriceParameters;
     private _getMetadata;
     private _atomicMatch;
+    private _atomicMatchTxData;
     private _getRequiredAmountForTakingSellOrder;
     private _authorizeOrder;
     private _getSchema;
