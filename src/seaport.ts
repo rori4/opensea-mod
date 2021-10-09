@@ -3015,7 +3015,7 @@ export class OpenSeaPort {
 
   this._dispatch(EventType.MatchOrders, { buy, sell, accountAddress, matchMetadata: metadata })
 
-  const txnData: any = { from: accountAddress, value, to: buy.exchange }
+  const txnData: any = { from: accountAddress, value }
   const args: WyvernAtomicMatchParameters = [
     [buy.exchange, buy.maker, buy.taker, buy.feeRecipient, buy.target,
     buy.staticTarget, buy.paymentToken, sell.exchange, sell.maker, sell.taker, sell.feeRecipient, sell.target, sell.staticTarget, sell.paymentToken],
