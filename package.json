@@ -1,5 +1,5 @@
 {
-  "name": "opensea-js",
+  "name": "@rori4/opensea-mod",
   "version": "1.2.0",
   "description": "JavaScript SDK for the OpenSea marketplace. Let users buy or sell crypto collectibles and other cryptogoods, all on your own site!",
   "files": [
@@ -77,5 +77,8 @@
     "typescript": "^4.3.5",
     "typescript-eslint-parser": "^16.0.0",
     "web3-typescript-typings": "^0.9.3"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }
