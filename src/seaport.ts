@@ -3021,7 +3021,7 @@ export class OpenSeaPort {
   }
 
   console.log('_validateMatch')
-  if(!skipValidate) {
+  if (!skipValidate) {
     await this._validateMatch({ buy, sell, accountAddress, shouldValidateBuy, shouldValidateSell })
   }
 
@@ -3053,7 +3053,7 @@ export class OpenSeaPort {
     ]
   ]
 
-  if(!skipValidate) {
+  if (!skipValidate) {
     // Estimate gas first
     try {
       // Typescript splat doesn't typecheck
@@ -3067,7 +3067,6 @@ export class OpenSeaPort {
       throw new Error(`Oops, the Ethereum network rejected this transaction :( The OpenSea devs have been alerted, but this problem is typically due an item being locked or untransferrable. The exact error was "${error.message.substr(0, MAX_ERROR_LENGTH)}..."`)
     }
   }
-
 
   // Then do the transaction
   try {
