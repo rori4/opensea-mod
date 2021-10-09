@@ -323,6 +323,7 @@ export declare class OpenSeaPort {
      * @param accountAddress The taker's wallet address
      * @param recipientAddress The optional address to receive the order's item(s) or curriencies. If not specified, defaults to accountAddress.
      * @param referrerAddress The optional address that referred the order
+     * @param skipValidation an option to skip validaiton
      * @returns unsigned transaction
      */
     fulfillOrderTxData({ order, accountAddress, recipientAddress, referrerAddress, skipValidation }: {
